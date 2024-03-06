@@ -1,20 +1,26 @@
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = 'your_jwt_secret';
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = "your_jwt_secret";
 
 function authenticateUser(req, res, next) {
-    const authToken = req.headers.authorization;
+	try {
+		const { token } = req.headers;
 
-    if (!authToken) {
-        return res.status(401).json({ message: 'Unauthorized' });
+		if (!token) {
+			return res.status(401).json({ message: "Unauthorized" });
+		}
+
+		jwt.verify(token, JWT_SECRET, (err, decodedToken) => {
+			if (err) {
+				return res.status(401).json({ message: "Unauthorized" });
+			}
+			req.user = decodedToken;
+            next();
+		});
+	} catch (error) {
+        console.error(`error in authenticateUser: ${error}`);
+        res.status(500).json({ message: 'Internal Server Error'})
     }
 
-    jwt.verify(authToken, JWT_SECRET, (err, decodedToken) => {
-        if (err) {
-            return res.status(401).json({ message: 'Unauthorized' });
-        }
-        req.user = decodedToken;
-        next();
-    });
 }
 
-module.exports = { authenticateUser }
+module.exports = { authenticateUser };

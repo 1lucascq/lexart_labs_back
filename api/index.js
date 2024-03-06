@@ -9,96 +9,113 @@ const PORT = process.env.PORT || 5000;
 app.use(bodyParser.json());
 
 const JWT_SECRET = "your_jwt_secret";
-const items = [
-	{ id: 1, name: "Item 1" },
-	{ id: 2, name: "Item 2" },
-	{ id: 3, name: "Item 3" },
-];
 
-const users = [{ id: 1, username: "user", password: "password" }];
+const pool = require("./database");
 
-app.post("/api/register", (req, res) => {
-	const { username, password } = req.body;
-	const existingUser = users.find((user) => user.username === username);
+app.post("/api/register", async (req, res) => {
+	const client = await pool.connect();
+	try {
+		const { username, password } = req.body;
+		const { rows } = await client.query("SELECT * FROM users");
+		const existingUser = rows.find((user) => user.username === username);
 
-	if (existingUser) {
-		return res.status(400).json({ message: "Username already exists" });
+		if (existingUser) {
+			return res.status(400).json({
+				message: `O usuário '${username}' já existe no nosso banco de dados.`,
+			});
+		}
+
+		const query = "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id";
+		const insertResult = await client.query(query, [username, password]);
+		const userId = insertResult.rows[0].id;
+		const token = jwt.sign({ userId, username }, JWT_SECRET, {
+			expiresIn: "3h",
+		});
+
+		res.status(201).json({
+			user: { userId, username, password },
+			token,
+			message: "Usuário registrado com sucesso.",
+		});
+	} catch (error) {
+		console.error("Error registering user:", error);
+		res.status(500).json({ error: "Internal Server Error" });
+	} finally {
+		await client.end();
 	}
-
-	const newUser = {
-		id: Date.now(),
-		username,
-		password,
-	};
-
-	users.push(newUser);
-
-	const token = jwt.sign(
-		{ userId: newUser.id, username: newUser.username },
-		JWT_SECRET,
-		{ expiresIn: "1h" }
-	);
-	res.status(201).json({ token });
 });
 
-app.post("/api/login", (req, res) => {
-	const { username, password } = req.body;
-	const user = users.find(
-		(user) => user.username === username && user.password === password
-	);
+app.post("/api/login", async (req, res) => {
+	const client = await pool.connect();
+	try {
+		const { username, password } = req.body;
+		const query = `SELECT * FROM users WHERE username = '${username}'`;
+		const { rows } = await client.query(query);
+		console.log(rows)
+		if (rows.length === 0) {
+			res.status(401).json({ message: "Invalid username" });
+		}
 
-	if (!user) {
-		return res
-			.status(401)
-			.json({ message: "Invalid username or password" });
+		const user = { username: rows[0].username, password: rows[0].password };
+
+		if (user.password !== password) {
+			res.status(401).json({ message: "Invalid password" });
+		}
+
+		const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "3h" });
+		res.json({ token });
+	} catch (error) {
+		console.error(`Error in /api/login: ${error}`);
+		res.status(500).send({ message: "Internal Server Error" });
+	} finally {
+		await client.end();
 	}
-
-	const token = jwt.sign(
-		{ userId: user.id, username: user.username },
-		JWT_SECRET,
-		{ expiresIn: "24h" }
-	);
-	res.json({ token });
 });
 
-app.get("/", authenticateUser, (req, res) => {
-	res.json({ oi: "oi" });
+app.get("/api/smartphones", authenticateUser, async (req, res) => {
+	const client = await pool.connect();
+	try {
+		const results = await client.query("SELECT * FROM smartphones");
+		console.log(results);
+		res.json(results.rows);
+	} catch (error) {
+		console.error(error);
+		res.status(500).send({ message: "Error retrieving smartphones" });
+	} finally {
+		await client.end();
+	}
 });
 
-app.get("/api/items", authenticateUser, (req, res) => {
-	res.json(items);
-});
-
-app.get("/api/items/:id", authenticateUser, (req, res) => {
+app.get("/api/smartphones/:id", authenticateUser, (req, res) => {
 	const itemId = parseInt(req.params.id);
-	const item = items.find((item) => item.id === itemId);
+	const item = smartphones.find((item) => item.id === itemId);
 	if (!item) {
 		return res.status(404).json({ message: "Item not found" });
 	}
 	res.json(item);
 });
 
-app.post("/api/items", authenticateUser, (req, res) => {
+app.post("/api/smartphones", authenticateUser, (req, res) => {
 	const newItem = req.body;
 	newItem.id = Date.now(); //TODO: manter esse id?
-	items.push(newItem);
+	smartphones.push(newItem);
 	res.status(201).json(newItem);
 });
 
-app.put("/api/items/:id", authenticateUser, (req, res) => {
+app.put("/api/smartphones/:id", authenticateUser, (req, res) => {
 	const itemId = parseInt(req.params.id);
-	const itemIndex = items.findIndex((item) => item.id === itemId);
+	const itemIndex = smartphones.findIndex((item) => item.id === itemId);
 	if (itemIndex === -1) {
 		return res.status(404).json({ message: "Item not found" });
 	}
-	const updatedItem = { ...items[itemIndex], ...req.body };
-	items[itemIndex] = updatedItem;
+	const updatedItem = { ...smartphones[itemIndex], ...req.body };
+	smartphones[itemIndex] = updatedItem;
 	res.json(updatedItem);
 });
 
-app.delete("/api/items/:id", authenticateUser, (req, res) => {
+app.delete("/api/smartphones/:id", authenticateUser, (req, res) => {
 	const itemId = parseInt(req.params.id);
-	items = items.filter((item) => item.id !== itemId);
+	smartphones = smartphones.filter((item) => item.id !== itemId);
 	res.sendStatus(204); // No content
 });
 
