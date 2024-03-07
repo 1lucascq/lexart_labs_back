@@ -38,7 +38,7 @@ exports.login = async (req, res) => {
 	try {
 		const userData = await User.findOne({ where: { username } });
 
-		if (!userData) {
+		if (!userData.dataValues) {
 			res.status(401).json({ message: "Invalid username" });
 		}
 
