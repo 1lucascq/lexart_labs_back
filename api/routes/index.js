@@ -5,8 +5,8 @@ const authController = require('../controllers/authController');
 const smartphonesController = require('../controllers/smartphonesController');
 const { authenticateUser } = require('../middlewares')
 
-router.post('/login', authenticateUser, authController.login);
-router.post('/register', authenticateUser, authController.register);
+router.post('/login', authController.login);
+router.post('/register', authController.register);
 
 router.get('/smartphones', authenticateUser, smartphonesController.getAll);
 router.get('/smartphones/:id', authenticateUser, smartphonesController.getById);
