@@ -1,14 +1,19 @@
 const db = require("./models");
 const routes = require("./routes");
 const express = require("express");
-const cors = require("cors");
-
 const bodyParser = require("body-parser");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: "*" }));
+const allowCors = (req, res, next) => {
+	res.setHeader("Access-Control-Allow-Origin", "*");
+	res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+	res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+	next();
+};
+
+app.use(allowCors);
 app.use(bodyParser.json());
 app.use("/api", routes);
 
