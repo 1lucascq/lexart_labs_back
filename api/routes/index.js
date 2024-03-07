@@ -5,14 +5,13 @@ const authController = require('../controllers/authController');
 const smartphonesController = require('../controllers/smartphonesController');
 const { authenticateUser } = require('../middlewares')
 
-router.post('/login', authController.login);
-router.post('/register', authController.register);
+router.post('/login', authenticateUser, authController.login);
+router.post('/register', authenticateUser, authController.register);
 
-router.get('/smartphones', smartphonesController.getAll);
-router.get('/smartphones/:id', smartphonesController.getById);
-router.post('/smartphones', smartphonesController.create);
-router.put('/smartphones/:id', smartphonesController.update);
-// router.patch('/smartphones/:id', smartphonesController.partialUpdate);
-router.delete('/smartphones/:id', smartphonesController.delete);
+router.get('/smartphones', authenticateUser, smartphonesController.getAll);
+router.get('/smartphones/:id', authenticateUser, smartphonesController.getById);
+router.post('/smartphones', authenticateUser, smartphonesController.create);
+router.put('/smartphones/:id', authenticateUser, smartphonesController.update);
+router.delete('/smartphones/:id', authenticateUser, smartphonesController.delete);
 
 module.exports = router;
