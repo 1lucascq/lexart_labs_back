@@ -16,5 +16,6 @@
 				"Access-Control-Allow-Headers": "Content-Type, Authorization"
 			}
 		}
-	]
+	],
+	"rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
